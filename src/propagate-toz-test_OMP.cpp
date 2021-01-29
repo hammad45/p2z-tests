@@ -35,10 +35,6 @@ icc propagate-toz-test.C -o propagate-toz-test.exe -fopenmp -O3
 #define nlayer 20
 #endif
 
-#ifndef nthreads
-#define nthreads 64
-#endif
-
 size_t PosInMtrx(size_t i, size_t j, size_t D) {
   return i*D+j;
 }
@@ -544,11 +540,14 @@ void propagateToZ(const MP6x6SF* inErr, const MP6F* inPar,const MP1I* inChg,
 }
 
 int main (int argc, char* argv[]) {
-  printf("bsize: %d, nb:%d, omp threads:%d\n",(int)bsize,(int)nb,(int)nthreads);
 #ifdef _OPENMP
   omp_set_dynamic(0);
+#ifdef nthreads
   omp_set_num_threads(nthreads);
 #endif
+  int numthreads = omp_get_max_threads();
+#endif
+  printf("bsize: %d, nb:%d, omp threads:%d\n",(int)bsize,(int)nb,(int)numthreads);
    int itr;
    ATRK inputtrk = {
      {-12.806846618652344, -7.723824977874756, 38.13014221191406,0.23732035065189902, -2.613372802734375, 0.35594117641448975},
@@ -614,7 +613,7 @@ int main (int argc, char* argv[]) {
    auto wall_time = static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(wall_diff).count()) / 1e6;
    printf("setup time time=%f (s)\n", (setup_stop-setup_start)*0.001);
    printf("done ntracks=%i tot time=%f (s) time/trk=%e (s)\n", nevts*ntrks*int(NITER), wall_time, wall_time/(nevts*ntrks*int(NITER)));
-   printf("formatted %i %i %i %i %i %f 0 %f %i\n",int(NITER),nevts, ntrks, bsize, nb, wall_time, (setup_stop-setup_start)*0.001, nthreads);
+   printf("formatted %i %i %i %i %i %f 0 %f %i\n",int(NITER),nevts, ntrks, bsize, nb, wall_time, (setup_stop-setup_start)*0.001, numthreads);
    
    float avgx = 0, avgy = 0, avgz = 0;
    float avgpt = 0, avgphi = 0, avgtheta = 0;
