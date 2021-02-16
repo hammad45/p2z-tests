@@ -1,5 +1,5 @@
 /*
-nvcc -arch=sm_80 -O3 -DUSE_GPU  -std=c++17 propagate-toz-test_CUDA_v2.cu -L -lcudart   -o ../bin/"propagate_nvcc_cuda_v2" -lnvToolsExt
+nvcc -arch=sm_70 -O3 -DUSE_GPU  -std=c++17 propagate-toz-test_CUDA_v2.cu -L -lcudart   -o ../bin/"propagate_nvcc_cuda_v2" -lnvToolsExt
 */
 #include <cuda_profiler_api.h>
 #include "cuda_runtime.h"

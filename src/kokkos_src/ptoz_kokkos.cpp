@@ -455,11 +455,11 @@ void propagateToZ(const CBTRK &inTrks, const CBHIT &inHits, CBTRK &outTrks,
   // for (size_t ib=0;ib<nb;++ib) {    // // TODO make a kookos parallel
   // size_t batch = ib + nb*ie;
   
+  #pragma ivdep
+  #pragma omp simd
   for (size_t layer=0;layer<nlayers;++layer) { 
 
-  #pragma ivdep
-  #pragma simd
-  for (size_t it=0;it<bsize;++it) { 
+    for (size_t it=0;it<bsize;++it) { 
    
     const float zout = inHits.pos(batch, Z_IND, it); 
     const float k = inTrks.q(batch, it)*100/3.8; 
@@ -507,13 +507,13 @@ void propagateToZ(const CBTRK &inTrks, const CBHIT &inHits, CBTRK &outTrks,
     for ( int j = 0; j < 6; ++j ) {
 
       #pragma ivdep
-      #pragma simd
+      #pragma omp simd
       for ( int it = 0; it < bsize; ++it ) 
         temp(batch,i,j,it) = 0.0;
 
       for ( int k = 0; k < 6; ++k ) {
         #pragma ivdep
-        #pragma simd
+        #pragma omp simd
         for ( int it = 0; it < bsize; ++it ) {
           temp(batch,i,j,it) += errorProp(batch,i,k,it) * inTrks.cov(batch,k,j,it);
         }
@@ -527,13 +527,13 @@ void propagateToZ(const CBTRK &inTrks, const CBHIT &inHits, CBTRK &outTrks,
     for ( int j = 0; j < 6; ++j ) {
 
       #pragma ivdep
-      #pragma simd
+      #pragma omp simd
       for ( int it = 0; it < bsize; ++it ) 
         outTrks.cov(batch,i,j,it) = 0.0;
 
       for ( int k = 0; k < 6; ++k ) {
         #pragma ivdep
-        #pragma simd
+        #pragma omp simd
         for ( int it = 0; it < bsize; ++it ) {
           outTrks.cov(batch,i,j,it) += errorProp(batch,i,k,it) * temp(batch,j,k,it);
         }
