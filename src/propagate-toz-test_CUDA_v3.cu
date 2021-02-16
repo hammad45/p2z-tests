@@ -27,7 +27,7 @@ Profiling: nsys profile -o prefetch3 --stats=true --force-overwrite=true ./bin/p
 #define ntrks 9600 //122880
 #endif
 
-#define nb    ntrks/bsize
+#define nb    (ntrks/bsize)
 #define smear 0.1
 
 #ifndef NITER
