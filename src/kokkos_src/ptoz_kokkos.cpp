@@ -455,8 +455,8 @@ void propagateToZ(const CBTRK &inTrks, const CBHIT &inHits, CBTRK &outTrks,
   // for (size_t ib=0;ib<nb;++ib) {    // // TODO make a kookos parallel
   // size_t batch = ib + nb*ie;
   
-  #pragma ivdep
-  #pragma omp simd
+  //#pragma ivdep
+  //#pragma omp simd
   for (size_t layer=0;layer<nlayers;++layer) { 
 
     for (size_t it=0;it<bsize;++it) { 

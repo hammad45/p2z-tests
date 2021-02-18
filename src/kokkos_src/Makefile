@@ -1,9 +1,8 @@
 # KOKKOS_PATH = ${HOME}/kokkos-simd
-KOKKOS_PATH = ${HOME}/kokkos
-#KOKKOS_DEVICES = "OpenMP"
-KOKKOS_DEVICES = "Cuda"
+KOKKOS_PATH = ${HOME}/soft/kokkos-3.3.01
+KOKKOS_DEVICES = "OpenMP"
+#KOKKOS_DEVICES = "Cuda"
 #KOKKOS_DEVICES = "OpenMP,Cuda"
-KOKKOS_CXX_STANDARD=c++14
 
 SRC = $(wildcard *.cpp)
 
@@ -16,7 +15,7 @@ CXX = ${KOKKOS_PATH}/bin/nvcc_wrapper
 # KOKKOS_ARCH = "HSW,Kepler35"
 KOKKOS_ARCH = "SKX,Volta70"
 KOKKOS_CUDA_OPTIONS = "enable_lambda"
-EXE = ../../bin/propagate_nvcc_kokkos_$(KOKKOS_DEVICES)
+EXE = ../../bin/propagate_nvcc_kokkos.gpu
 USE_GPU=1
 else
 # g++-10- needed on apollo
@@ -24,7 +23,7 @@ else
 CXX = g++
 CXX = icpc
 #EXE = ${EXE_NAME}.host
-EXE = "../../bin/propagate_gcc_kokkos"
+EXE = "../../bin/propagate_$(CXX)_kokkos.host"
 KOKKOS_ARCH = "SKX"
 endif
 
@@ -35,13 +34,13 @@ ifndef NLAYER
 NLAYER=20
 endif
 
-CXXFLAGS = -O3 -g -DNITER=${NITER} -Dnlayers=${NLAYER}
+CXXFLAGS = -O3 -g -DNITER=${NITER} -Dnlayers=${NLAYER} 
 LINK = ${CXX}
 LINKFLAGS =
 
-#ifeq ($(CXX),"icpc")
-#CXXFLAGS += -march=skylake-avx512 -qopt-zmm-usage=high
-#endif
+ifneq (,$(findstring Cuda,$(KOKKOS_DEVICES)))
+CXXFLAGS += ipo -mtune=skylake -xCORE-AVX2 -qopt-zmm-usage=high 
+endif
 
 ifdef USE_GPU
 CXXFLAGS += -DUSE_GPU=1
