@@ -9,7 +9,7 @@
 # COMPILER options: pgi, gcc, openarc, nvcc, icc, llvm   #
 #                   ibm                                  #
 # MODE options: acc, omp, seq, cuda, tbb, eigen, alpaka, #
-#               omp4                                     #
+#               omp4, cudav2, cudav3                     #
 ##########################################################
 COMPILER ?= nvcc
 MODE ?= eigen
@@ -181,6 +181,15 @@ ifeq ($(COMPILER),nvcc)
 CXX=nvcc
 CFLAGS1 += -arch=sm_70 -O3 -DUSE_GPU --default-stream per-thread -maxrregcount 64
 CLIBS1 += -L${CUDALIBDIR} -lcudart -DUSE_NVTX -lnvToolsExt
+endif
+endif
+
+ifeq ($(MODE),cudav3)
+CSRCS = propagate-toz-test_CUDA_v3.cu
+ifeq ($(COMPILER),nvcc)
+CXX=nvcc
+CFLAGS1 += -arch=sm_70 -O3 -DUSE_GPU --default-stream per-thread -maxrregcount 64
+CLIBS1 += -L${CUDALIBDIR} -lcudart 
 endif
 endif
 

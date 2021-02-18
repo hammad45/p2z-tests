@@ -27,7 +27,7 @@ nvcc -arch=sm_70 -O3 -DUSE_GPU  -std=c++17 propagate-toz-test_CUDA_v2.cu -L -lcu
 #define ntrks 9600 //122880
 #endif
 
-#define nb    ntrks/bsize
+#define nb    (ntrks/bsize)
 #define smear 0.1
 
 #ifndef NITER
@@ -904,9 +904,9 @@ int main (int argc, char* argv[]) {
    printf("track phi avg=%f\n", avgphi);
    printf("track theta avg=%f\n", avgtheta);
 	
-   cudaFree(trk);
-   cudaFree(hit);
-   cudaFree(outtrk);
+   cudaFreeHost(trk);
+   cudaFreeHost(hit);
+   cudaFreeHost(outtrk);
    //free(trk);
    //free(hit);
    //free(outtrk);
