@@ -51,6 +51,13 @@ icc propagate-toz-test.C -o propagate-toz-test.exe -fopenmp -O3
 #endif
 #endif
 
+#ifndef num_streams
+#define num_streams 10
+#ifdef _OPENARC_
+#pragma openarc #define num_streams 10
+#endif
+#endif
+
 
 size_t PosInMtrx(size_t i, size_t j, size_t D) {
   return i*D+j;
@@ -620,34 +627,44 @@ int main (int argc, char* argv[]) {
    gettimeofday(&timecheck, NULL);
    start2 = (long)timecheck.tv_sec * 1000 + (long)timecheck.tv_usec / 1000;
 
+   int chunkSize = nevts/num_streams;
+   int lastChunkSize = chunkSize;
+   if( nevts%num_streams != 0 ) {
+     lastChunkSize = chunkSize + (nevts - num_streams*chunkSize);
+   }
    for(itr=0; itr<NITER; itr++) {
-     #pragma acc update device(trk[0:nevts*nb], hit[0:nevts*nb*nlayer]) 
-     {
-     #pragma acc parallel loop gang num_workers(bsize) collapse(2) present(trk[0:nevts*nb], hit[0:nevts*nb*nlayer], outtrk[0:nevts*nb]) 
-     for (size_t ie=0;ie<nevts;++ie) { // loop over events
-       for (size_t ib=0;ib<nb;++ib) { // loop over bunches of tracks
-         //
-		 //[DEBUG on Dec. 8, 2020] Moved gang-private variable declarations out of the device functions (propagateToZ and KalmanUpdate) to here.
-   	     struct MP6x6F errorProp, temp;
-  		 struct MP3x3 inverse_temp;
-  		 struct MP3x6 kGain;
-  		 struct MP6x6SF newErr;
-         const struct MPTRK* btracks = bTkC(trk, ie, ib);
-         struct MPTRK* obtracks = bTk(outtrk, ie, ib);
-         for(size_t layer=0; layer<nlayer; ++layer) {
-            const struct MPHIT* bhits = bHit4(hit, ie, ib,layer);
-         //
-            propagateToZ(&(*btracks).cov, &(*btracks).par, &(*btracks).q, &(*bhits).pos, &(*obtracks).cov, &(*obtracks).par,
-  	        &errorProp, &temp); // vectorized function
-            //KalmanUpdate(&(*obtracks).cov,&(*obtracks).par,&(*bhits).cov,&(*bhits).pos);
-            KalmanUpdate(&(*obtracks).cov,&(*obtracks).par,&(*bhits).cov,&(*bhits).pos, &inverse_temp, &kGain, &newErr);
-         }
-       }
-     }
-   }  
-   #pragma acc update host(outtrk[0:nevts*nb]) 
+     int localChunkSize = chunkSize;
+     for(int s=0; s<num_streams; s++) {
+		if( s==num_streams-1 ) {
+			localChunkSize = lastChunkSize;
+		}
+     	#pragma acc update device(trk[s*chunkSize*nb:localChunkSize*nb], hit[s*chunkSize*nb*nlayer:localChunkSize*nb*nlayer]) async(s)
+		//#pragma openarc cuda sharedRW(ie, ib)
+     	#pragma acc parallel loop gang num_workers(bsize) collapse(2) present(trk[s*chunkSize*nb:localChunkSize*nb], hit[s*chunkSize*nb*nlayer:localChunkSize*nb*nlayer], outtrk[s*chunkSize*nb:localChunkSize*nb]) async(s)
+     	for (size_t ie=s*chunkSize;ie<(s*chunkSize+localChunkSize);++ie) { // loop over events
+       		for (size_t ib=0;ib<nb;++ib) { // loop over bunches of tracks
+		 		//[DEBUG on Dec. 8, 2020] Moved gang-private variable declarations out of the device functions (propagateToZ and KalmanUpdate) to here.
+   	     		struct MP6x6F errorProp, temp;
+  		 		struct MP3x3 inverse_temp;
+  		 		struct MP3x6 kGain;
+  		 		struct MP6x6SF newErr;
+         		const struct MPTRK* btracks = bTkC(trk, ie, ib);
+         		struct MPTRK* obtracks = bTk(outtrk, ie, ib);
+         		for(size_t layer=0; layer<nlayer; ++layer) {
+            		const struct MPHIT* bhits = bHit4(hit, ie, ib,layer);
+         		//
+            		propagateToZ(&(*btracks).cov, &(*btracks).par, &(*btracks).q, &(*bhits).pos, &(*obtracks).cov, &(*obtracks).par,
+  	        		&errorProp, &temp); // vectorized function
+            		//KalmanUpdate(&(*obtracks).cov,&(*obtracks).par,&(*bhits).cov,&(*bhits).pos);
+            		KalmanUpdate(&(*obtracks).cov,&(*obtracks).par,&(*bhits).cov,&(*bhits).pos, &inverse_temp, &kGain, &newErr);
+         		}
+       		}
+     	}
+   		#pragma acc update host(outtrk[s*chunkSize*nb:localChunkSize*nb]) async(s)
+	}  
    } //end of itr loop
 
+   #pragma acc wait
    gettimeofday(&timecheck, NULL);
    end2 = (long)timecheck.tv_sec * 1000 + (long)timecheck.tv_usec / 1000;
 
