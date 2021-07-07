@@ -473,7 +473,7 @@ void KalmanUpdate(MP6x6SF* trkErr, MP6F* inPar, const MP3x3SF* hitErr, const MP3
   //Is this the correct way to assign the errors? Should I use memcpy instead?  
   //sets new track errors
   //[DEBUG on Dec.8, 2020] below does not have any effect since trkErr is a local variable.
-  trkErr = &newErr;
+  (*trkErr) = newErr;
 }
 
 

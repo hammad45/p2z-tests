@@ -497,7 +497,7 @@ __forceinline__ __device__ void KalmanUpdate(MP6x6SF* trkErr, MP6F* inPar, const
     settheta(inPar,it, thetanew);
   }
   __syncthreads(); 
-  trkErr = &newErr;
+  (*trkErr) = newErr;
 }
 
 __device__ __constant__ float kfact = 100/3.8;
