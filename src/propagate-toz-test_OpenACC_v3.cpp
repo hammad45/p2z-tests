@@ -464,7 +464,8 @@ void KalmanUpdate(MP6x6SF* trkErr, MP6F* inPar, const MP3x3SF* hitErr, const MP3
     setphi(inPar,it, phinew);
     settheta(inPar,it, thetanew);
   }
-  (*trkErr) = newErr;
+  //[DEBUG on Dec.8, 2020] below does not have any effect since trkErr is a local variable.
+  //trkErr = newErr;
 }
 
 
@@ -590,16 +591,17 @@ int main (int argc, char* argv[]) {
    for(itr=0; itr<NITER; itr++) {
      #pragma acc update device(trk[0:nevts*nb], hit[0:nevts*nb*nlayer])
      {
-     #pragma acc parallel loop gang collapse(2) present(trk[0:nevts*nb], hit[0:nevts*nb*nlayer], outtrk[0:nevts*nb])
+		 //[DEBUG on Sept. 14, 2021] Moved gang-private variable declarations from the parallel region to here.
+   	     struct MP6x6F errorProp, temp;
+  		 struct MP3x3 inverse_temp;
+  		 struct MP3x6 kGain;
+  		 struct MP6x6SF newErr;
+     #pragma acc parallel loop gang collapse(2) present(trk[0:nevts*nb], hit[0:nevts*nb*nlayer], outtrk[0:nevts*nb]) private(errorProp,temp,inverse_temp,kGain,newErr)
      for (size_t ie=0;ie<nevts;++ie) { // loop over events
        for (size_t ib=0;ib<nb;++ib) { // loop over bunches of tracks
          //
 		 //[DEBUG on Dec. 8, 2020] Moved gang-private variable declarations out of the device functions (propagateToZ and KalmanUpdate) to here.
 		 //[DEBUG on Dec. 31, 2020] PGI compiler incorrectly recognizes gang-private variables as gang-shared, causing race conditions.
-   	     struct MP6x6F errorProp, temp;
-  		 struct MP3x3 inverse_temp;
-  		 struct MP3x6 kGain;
-  		 struct MP6x6SF newErr;
          const MPTRK* btracks = bTk(trk, ie, ib);
          MPTRK* obtracks = bTk(outtrk, ie, ib);
          for(size_t layer=0; layer<nlayer; ++layer) {

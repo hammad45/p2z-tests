@@ -14,7 +14,7 @@ icc propagate-toz-test.C -o propagate-toz-test.exe -fopenmp -O3
 #define FIXED_RSEED
 
 #ifndef bsize
-#define bsize 128
+#define bsize 1
 #endif
 #ifndef ntrks
 #define ntrks 9600
@@ -269,12 +269,13 @@ MPHIT* prepareHits(AHIT inputhit) {
 }
 
 #define N bsize
-#pragma acc routine vector nohost
+//#pragma acc routine vector nohost
+#pragma acc routine seq nohost
 void MultHelixPropEndcap(const MP6x6F* A, const MP6x6SF* B, MP6x6F* C) {
   const float* a = A->data; //ASSUME_ALIGNED(a, 64);
   const float* b = B->data; //ASSUME_ALIGNED(b, 64);
   float* c = C->data;       //ASSUME_ALIGNED(c, 64);
- #pragma acc loop vector
+ //#pragma acc loop vector
   for (int n = 0; n < N; ++n)
   {
     c[ 0*N+n] = b[ 0*N+n] + a[ 2*N+n]*b[ 3*N+n] + a[ 3*N+n]*b[ 6*N+n] + a[ 4*N+n]*b[10*N+n] + a[ 5*N+n]*b[15*N+n];
@@ -316,12 +317,13 @@ void MultHelixPropEndcap(const MP6x6F* A, const MP6x6SF* B, MP6x6F* C) {
   }
 }
 
-#pragma acc routine vector nohost
+//#pragma acc routine vector nohost
+#pragma acc routine seq nohost
 void MultHelixPropTranspEndcap(const MP6x6F* A, const MP6x6F* B, MP6x6SF* C) {
   const float* a = A->data; //ASSUME_ALIGNED(a, 64);
   const float* b = B->data; //ASSUME_ALIGNED(b, 64);
   float* c = C->data;       //ASSUME_ALIGNED(c, 64);
- #pragma acc loop vector
+ //#pragma acc loop vector
   for (int n = 0; n < N; ++n)
   {
     c[ 0*N+n] = b[ 0*N+n] + b[ 2*N+n]*a[ 2*N+n] + b[ 3*N+n]*a[ 3*N+n] + b[ 4*N+n]*a[ 4*N+n] + b[ 5*N+n]*a[ 5*N+n];
@@ -348,12 +350,13 @@ void MultHelixPropTranspEndcap(const MP6x6F* A, const MP6x6F* B, MP6x6SF* C) {
   }
 }
 
-#pragma acc routine vector nohost
+//#pragma acc routine vector nohost
+#pragma acc routine seq nohost
 void KalmanGainInv(const MP6x6SF* A, const MP3x3SF* B, MP3x3* C) {
   const float* a = (*A).data; //ASSUME_ALIGNED(a, 64);
   const float* b = (*B).data; //ASSUME_ALIGNED(b, 64);
   float* c = (*C).data;       //ASSUME_ALIGNED(c, 64);
- #pragma acc loop vector
+ //#pragma acc loop vector
   for (int n = 0; n < N; ++n)
   {
     double det =
@@ -373,12 +376,13 @@ void KalmanGainInv(const MP6x6SF* A, const MP3x3SF* B, MP3x3* C) {
     c[ 8*N+n] =  invdet*(((a[ 0*N+n]+b[ 0*N+n]) *(a[6*N+n]+b[3*N+n])) - ((a[1*N+n]+b[1*N+n]) *(a[1*N+n]+b[1*N+n])));
   }
 }
-#pragma acc routine vector nohost
+//#pragma acc routine vector nohost
+#pragma acc routine seq nohost
 void KalmanGain(const MP6x6SF* A, const MP3x3* B, MP3x6* C) {
   const float* a = (*A).data; //ASSUME_ALIGNED(a, 64);
   const float* b = (*B).data; //ASSUME_ALIGNED(b, 64);
   float* c = (*C).data;       //ASSUME_ALIGNED(c, 64);
- #pragma acc loop vector
+ //#pragma acc loop vector
   for (int n = 0; n < N; ++n)
   {
     c[ 0*N+n] = a[0*N+n]*b[0*N+n] + a[1*N+n]*b[3*N+n] + a[2*N+n]*b[6*N+n];
@@ -402,7 +406,8 @@ void KalmanGain(const MP6x6SF* A, const MP3x3* B, MP3x6* C) {
   }
 }
 
-#pragma acc routine vector nohost
+//#pragma acc routine vector nohost
+#pragma acc routine seq nohost
 void KalmanUpdate(MP6x6SF* trkErr, MP6F* inPar, const MP3x3SF* hitErr, const MP3F* msP, MP3x3* inverse_temp, MP3x6* kGain, MP6x6SF* newErr){
   //MP3x3 inverse_temp;
   //MP3x6 kGain;
@@ -411,7 +416,7 @@ void KalmanUpdate(MP6x6SF* trkErr, MP6F* inPar, const MP3x3SF* hitErr, const MP3
   KalmanGain(trkErr,inverse_temp,kGain);
 
 
- #pragma acc loop vector
+ //#pragma acc loop vector
   for (size_t it=0;it<bsize;++it) {
     const float xin = x(inPar,it);
     const float yin = y(inPar,it);
@@ -464,18 +469,20 @@ void KalmanUpdate(MP6x6SF* trkErr, MP6F* inPar, const MP3x3SF* hitErr, const MP3
     setphi(inPar,it, phinew);
     settheta(inPar,it, thetanew);
   }
-  (*trkErr) = newErr;
+  //[DEBUG on Dec.8, 2020] below does not have any effect since trkErr is a local variable.
+  //trkErr = newErr;
 }
 
 
 const float kfact = 100/3.8;
-#pragma acc routine vector nohost
+//#pragma acc routine vector nohost
+#pragma acc routine seq nohost
 void propagateToZ(const MP6x6SF* inErr, const MP6F* inPar,
 		  const MP1I* inChg, const MP3F* msP,
 	                MP6x6SF* outErr, MP6F* outPar,
  		struct MP6x6F* errorProp, struct MP6x6F* temp) {
   //
- #pragma acc loop vector
+ //#pragma acc loop vector
   for (size_t it=0;it<bsize;++it) {	
     const float zout = z(msP,it);
     const float k = q(inChg,it)*kfact;//100/3.8;
@@ -590,16 +597,17 @@ int main (int argc, char* argv[]) {
    for(itr=0; itr<NITER; itr++) {
      #pragma acc update device(trk[0:nevts*nb], hit[0:nevts*nb*nlayer])
      {
-     #pragma acc parallel loop gang collapse(2) present(trk[0:nevts*nb], hit[0:nevts*nb*nlayer], outtrk[0:nevts*nb])
+		 //[DEBUG on Sept. 14, 2021] Moved gang-private variable declarations from the parallel region to here.
+   	     struct MP6x6F errorProp, temp;
+  		 struct MP3x3 inverse_temp;
+  		 struct MP3x6 kGain;
+  		 struct MP6x6SF newErr;
+     #pragma acc parallel loop gang vector collapse(2) present(trk[0:nevts*nb], hit[0:nevts*nb*nlayer], outtrk[0:nevts*nb]) private(errorProp,temp,inverse_temp,kGain,newErr) 
      for (size_t ie=0;ie<nevts;++ie) { // loop over events
        for (size_t ib=0;ib<nb;++ib) { // loop over bunches of tracks
          //
 		 //[DEBUG on Dec. 8, 2020] Moved gang-private variable declarations out of the device functions (propagateToZ and KalmanUpdate) to here.
 		 //[DEBUG on Dec. 31, 2020] PGI compiler incorrectly recognizes gang-private variables as gang-shared, causing race conditions.
-   	     struct MP6x6F errorProp, temp;
-  		 struct MP3x3 inverse_temp;
-  		 struct MP3x6 kGain;
-  		 struct MP6x6SF newErr;
          const MPTRK* btracks = bTk(trk, ie, ib);
          MPTRK* obtracks = bTk(outtrk, ie, ib);
          for(size_t layer=0; layer<nlayer; ++layer) {
