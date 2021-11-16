@@ -16,7 +16,7 @@
 #define nlayers 20      // number of events
 #define nevts 100      // number of events
 #define nb    ntrks/bsize     // number of batches? 600
-#define bsize 16       // batch size (tracks per batch?)
+#define bsize 128       // batch size (tracks per batch?)
 
 // #define nevts 100      // number of events
 // #define nb    150      // number of batches?

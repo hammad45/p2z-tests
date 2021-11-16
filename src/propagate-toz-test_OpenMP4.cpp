@@ -467,7 +467,7 @@ void KalmanUpdate(MP6x6SF* trkErr, MP6F* inPar, const MP3x3SF* hitErr, const MP3
     setphi(inPar,it, phinew);
     settheta(inPar,it, thetanew);
   }
-  trkErr = newErr;
+  (*trkErr) = newErr;
 }
 #pragma omp end declare target
 

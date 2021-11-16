@@ -526,8 +526,7 @@ __forceinline__ __device__ void KalmanUpdate(MP6x6SF* trkErr, MP6F* inPar, const
     settheta(inPar,it, thetanew);
   }
   __syncthreads(); 
-  //[DEBUG on Feb. 15, 2021] below assignment does not have any effect since trkErr is a local variable.
-  trkErr = &newErr;
+  (*trkErr) = newErr;
 }
 
 __device__ __constant__ float kfact = 100/3.8;

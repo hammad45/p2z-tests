@@ -7,6 +7,11 @@ icc propagate-toz-test.C -o propagate-toz-test.exe -fopenmp -O3
 #include <math.h>
 #include <unistd.h>
 #include <sys/time.h>
+//#define PREPIN_HOST_MEMORY
+#ifdef PREPIN_HOST_MEMORY
+#include <sys/mman.h>
+#include <errno.h>
+#endif
 
 //#define DUMP_OUTPUT
 #define FIXED_RSEED
@@ -244,8 +249,28 @@ float x_pos3(const struct MPHIT* hits, size_t ev, size_t tk)    { return pos3(hi
 float y_pos3(const struct MPHIT* hits, size_t ev, size_t tk)    { return pos3(hits, ev, tk, 1); }
 float z_pos3(const struct MPHIT* hits, size_t ev, size_t tk)    { return pos3(hits, ev, tk, 2); }
 
+#ifdef PREPIN_HOST_MEMORY
+void mLockErrorCheck(int lError) {
+  if( lError != 0 ) {
+	printf("[mlock] Error occurred while locking pages!\n");
+	if( errno == ENOMEM ) {printf("\tmlock error = ENOMEM\n");}
+	else if( errno == EPERM ) {printf("\tmlock error = EPERM\n");}
+	else if( errno == EAGAIN ) {printf("\tmlock error = EAGAIN\n");}
+	else if( errno == EINVAL ) {printf("\tmlock error = EINVAL\n");}
+	else if( errno == ENOMEM ) {printf("\tmlock error = ENOMEM\n");}
+	else {printf("\tmlock error = UNKNOWN (%d)\n", errno);}
+  } else {
+	printf("[mlock] Page-locking successful!\n");
+  }
+}
+#endif
+
 struct MPTRK* prepareTracks(struct ATRK inputtrk) {
   struct MPTRK* result = (struct MPTRK*) malloc(nevts*nb*sizeof(struct MPTRK)); //fixme, align?
+#ifdef PREPIN_HOST_MEMORY
+  int lError = mlock((const void *)result, nevts*nb*sizeof(struct MPTRK));
+  mLockErrorCheck(lError);
+#endif
   // store in element order for bunches of bsize matrices (a la matriplex)
   for (size_t ie=0;ie<nevts;++ie) {
     for (size_t ib=0;ib<nb;++ib) {
@@ -268,6 +293,10 @@ struct MPTRK* prepareTracks(struct ATRK inputtrk) {
 
 struct MPHIT* prepareHits(struct AHIT inputhit) {
   struct MPHIT* result = (struct MPHIT*) malloc(nlayer*nevts*nb*sizeof(struct MPHIT));  //fixme, align?
+#ifdef PREPIN_HOST_MEMORY
+  int lError = mlock((const void *)result, nlayer*nevts*nb*sizeof(struct MPHIT));
+  mLockErrorCheck(lError);
+#endif
   // store in element order for bunches of bsize matrices (a la matriplex)
   for (size_t lay=0;lay<nlayer;++lay) {
     for (size_t ie=0;ie<nevts;++ie) {
@@ -601,6 +630,10 @@ int main (int argc, char* argv[]) {
    struct MPTRK* trk = prepareTracks(inputtrk);
    struct MPHIT* hit = prepareHits(inputhit);
    struct MPTRK* outtrk = (struct MPTRK*) malloc(nevts*nb*sizeof(struct MPTRK));
+#ifdef PREPIN_HOST_MEMORY
+  int lError = mlock((const void *)outtrk, nevts*nb*sizeof(struct MPTRK));
+  mLockErrorCheck(lError);
+#endif
 
 #pragma acc enter data create(trk[0:nevts*nb], hit[0:nevts*nb*nlayer], outtrk[0:nevts*nb])
 
